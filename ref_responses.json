@@ -1,0 +1,66 @@
+{
+  "image_chance": 0.2,
+
+  "lines": [
+    "Play on.",
+    "Nothing in it.",
+    "No foul there.",
+    "Ref’s decision.",
+    "Advantage given.",
+    "Fair challenge.",
+    "I saw it.",
+    "I didn’t see it.",
+
+    "I’m not paid enough for this.",
+    "It happens.",
+    "Keep it clean.",
+    "Behave.",
+    "Relax.",
+    "We move.",
+    "I’ve seen worse.",
+    "Eyes on the ball.",
+    "That’s ball — it is what it is.",
+
+    "That’s your warning.",
+    "Next one’s a card.",
+    "Careful.",
+    "Final warning.",
+    "Bookable offence.",
+    "You’re lucky.",
+    "Enough.",
+    "Back away.",
+    "You don’t want this.",
+    "I’m watching you.",
+
+    "That’s soft.",
+    "You’re reaching.",
+    "Never a foul.",
+    "Be serious.",
+    "Not buying it.",
+    "Seen through it.",
+    "Too easy.",
+    "No chance.",
+    "You’re selling it.",
+    "Absolutely not.",
+
+    "I saw everything and nothing.",
+    "The whistle stays silent.",
+    "Ball don’t lie.",
+    "Ask VAR, not me.",
+    "That’s between you and god.",
+    "I choose chaos.",
+    "Fate decided that one.",
+    "The ref giveth nothing.",
+    "We’ll talk after.",
+    "I blacked out. Play on."
+  ],
+
+  "images": [
+    "https://cdn.discordapp.com/attachments/1444274467864838207/1449017267861065880/IMG_6845.jpg",
+    "https://cdn.discordapp.com/attachments/1444274467864838207/1449017642961862686/IMG_8482.png",
+    "https://cdn.discordapp.com/attachments/1444274467864838207/1449018148085956658/IMG_8487.jpg",
+    "https://cdn.discordapp.com/attachments/1444274467864838207/1449018225261019178/IMG_8486.jpg",
+    "https://cdn.discordapp.com/attachments/1444274467864838207/1449018350830358642/IMG_8489.webp",
+    "https://cdn.discordapp.com/attachments/1444274467864838207/1449018394681540752/IMG_8490.jpg"
+  ]
+}
