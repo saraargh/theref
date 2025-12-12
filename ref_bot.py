@@ -8,7 +8,7 @@ from threading import Thread
 
 # ===== CONFIG =====
 TOKEN = os.getenv("REF_TOKEN")
-REF_ROLE_ID = 1449021154596749342
+REF_ROLE_ID = 1449027569646305365
 RESPONSES_FILE = "ref_responses.json"
 COOLDOWN_SECONDS = 10
 
