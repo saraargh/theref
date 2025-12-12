@@ -71,9 +71,16 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
-    # Ignore replies
-    if message.reference is not None:
-        return
+    
+    # Ignore replies ONLY if replying to REF
+if message.reference is not None:
+    try:
+        replied_to = message.reference.resolved
+        if replied_to and replied_to.author == client.user:
+            return
+    except:
+        pass
+        
 
     # Check role mention
     role_mentioned = any(role.id == REF_ROLE_ID for role in message.role_mentions)
