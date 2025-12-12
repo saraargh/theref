@@ -6,13 +6,13 @@ import discord
 from flask import Flask
 from threading import Thread
 
-# ===== CONFIG =====
+# ================= CONFIG =================
 TOKEN = os.getenv("REF_TOKEN")
-REF_ROLE_ID = 1449027569646305365
+REF_ROLE_ID = 1449021154596749342
 RESPONSES_FILE = "ref_responses.json"
 COOLDOWN_SECONDS = 10
 
-# ===== FLASK KEEP-ALIVE =====
+# ================= FLASK KEEP-ALIVE =================
 app = Flask("ref")
 
 @app.route("/")
@@ -24,14 +24,14 @@ def run_flask():
 
 Thread(target=run_flask, daemon=True).start()
 
-# ===== DISCORD INTENTS =====
+# ================= DISCORD SETUP =================
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
 client = discord.Client(intents=intents)
 
-# ===== HOT-RELOAD RESPONSE DATA =====
+# ================= HOT-RELOAD DATA =================
 _last_mtime = 0
 REF_LINES = []
 REF_IMAGES = []
@@ -42,6 +42,7 @@ def load_responses():
 
     try:
         mtime = os.path.getmtime(RESPONSES_FILE)
+
         if mtime != _last_mtime:
             with open(RESPONSES_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -56,10 +57,10 @@ def load_responses():
     except Exception as e:
         print(f"❌ Failed to load responses: {e}")
 
-# ===== COOLDOWN TRACKING =====
+# ================= COOLDOWN =================
 USER_COOLDOWNS = {}
 
-# ===== EVENTS =====
+# ================= EVENTS =================
 @client.event
 async def on_ready():
     load_responses()
@@ -71,16 +72,14 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
-    
     # Ignore replies ONLY if replying to REF
-if message.reference is not None:
-    try:
-        replied_to = message.reference.resolved
-        if replied_to and replied_to.author == client.user:
-            return
-    except:
-        pass
-        
+    if message.reference is not None:
+        try:
+            replied_to = message.reference.resolved
+            if replied_to and replied_to.author == client.user:
+                return
+        except:
+            pass
 
     # Check role mention
     role_mentioned = any(role.id == REF_ROLE_ID for role in message.role_mentions)
@@ -109,5 +108,5 @@ if message.reference is not None:
     elif REF_LINES:
         await message.channel.send(random.choice(REF_LINES))
 
-# ===== START =====
+# ================= START =================
 client.run(TOKEN)
