@@ -1,5 +1,3 @@
-# ref_bot.py
-
 import os
 import json
 import random
@@ -10,8 +8,9 @@ from threading import Thread
 
 # ===== CONFIG =====
 TOKEN = os.getenv("REF_TOKEN")
-REF_ROLE_ID = 1449021154596749342>  # <-- PUT REF ROLE ID HERE
+REF_ROLE_ID = 1449021154596749342
 RESPONSES_FILE = "ref_responses.json"
+COOLDOWN_SECONDS = 10
 
 # ===== FLASK KEEP-ALIVE =====
 app = Flask("ref")
@@ -32,7 +31,7 @@ intents.members = True
 
 client = discord.Client(intents=intents)
 
-# ===== RESPONSE DATA (HOT RELOAD) =====
+# ===== HOT-RELOAD RESPONSE DATA =====
 _last_mtime = 0
 REF_LINES = []
 REF_IMAGES = []
@@ -57,6 +56,9 @@ def load_responses():
     except Exception as e:
         print(f"❌ Failed to load responses: {e}")
 
+# ===== COOLDOWN TRACKING =====
+USER_COOLDOWNS = {}
+
 # ===== EVENTS =====
 @client.event
 async def on_ready():
@@ -65,21 +67,36 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
+    # Ignore bots
     if message.author.bot:
         return
 
-    if not message.role_mentions:
+    # Ignore replies
+    if message.reference is not None:
         return
 
-    mentioned_role_ids = [role.id for role in message.role_mentions]
+    # Check role mention
+    role_mentioned = any(role.id == REF_ROLE_ID for role in message.role_mentions)
 
-    if REF_ROLE_ID not in mentioned_role_ids:
+    # Check bot mention
+    bot_mentioned = client.user in message.mentions
+
+    if not role_mentioned and not bot_mentioned:
         return
 
-    # Hot reload check
+    # Cooldown check
+    now = time.time()
+    last_used = USER_COOLDOWNS.get(message.author.id, 0)
+
+    if now - last_used < COOLDOWN_SECONDS:
+        return
+
+    USER_COOLDOWNS[message.author.id] = now
+
+    # Hot reload responses
     load_responses()
 
-    # Respond
+    # Respond (80/20 image vs text)
     if REF_IMAGES and random.random() < IMAGE_CHANCE:
         await message.channel.send(random.choice(REF_IMAGES))
     elif REF_LINES:
