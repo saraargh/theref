@@ -6,6 +6,11 @@ import discord
 from flask import Flask
 from threading import Thread
 
+from dotenv import load_dotenv
+
+# This looks for the .env file and loads its contents
+load_dotenv()
+
 # ================= CONFIG =================
 TOKEN = os.getenv("REF_TOKEN")
 RESPONSES_FILE = "ref_responses.json"
