@@ -9,7 +9,7 @@ from threading import Thread
 # ================= CONFIG =================
 TOKEN = os.getenv("REF_TOKEN")
 RESPONSES_FILE = "ref_responses.json"
-COOLDOWN_SECONDS = 1
+COOLDOWN_SECONDS = 10
 
 # ================= FLASK KEEP-ALIVE =================
 app = Flask("ref")
