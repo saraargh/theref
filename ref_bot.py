@@ -8,9 +8,8 @@ from threading import Thread
 
 # ================= CONFIG =================
 TOKEN = os.getenv("REF_TOKEN")
-REF_ROLE_ID = 1449021154596749342
 RESPONSES_FILE = "ref_responses.json"
-COOLDOWN_SECONDS = 10
+COOLDOWN_SECONDS = 1
 
 # ================= FLASK KEEP-ALIVE =================
 app = Flask("ref")
@@ -31,7 +30,7 @@ intents.members = True
 
 client = discord.Client(intents=intents)
 
-# ================= HOT-RELOAD DATA =================
+# ================= DATA LOADING =================
 _last_mtime = 0
 REF_LINES = []
 REF_IMAGES = []
@@ -39,21 +38,18 @@ IMAGE_CHANCE = 0.2
 
 def load_responses():
     global _last_mtime, REF_LINES, REF_IMAGES, IMAGE_CHANCE
-
     try:
+        if not os.path.exists(RESPONSES_FILE):
+            return
         mtime = os.path.getmtime(RESPONSES_FILE)
-
         if mtime != _last_mtime:
             with open(RESPONSES_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-
             REF_LINES = data.get("lines", [])
             REF_IMAGES = data.get("images", [])
             IMAGE_CHANCE = data.get("image_chance", 0.2)
-
             _last_mtime = mtime
             print("🟨 REF responses reloaded")
-
     except Exception as e:
         print(f"❌ Failed to load responses: {e}")
 
@@ -68,45 +64,39 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
-    # Ignore bots
+    # 1. Ignore other bots
     if message.author.bot:
         return
 
-    # Ignore replies ONLY if replying to REF
-    if message.reference is not None:
-        try:
-            replied_to = message.reference.resolved
-            if replied_to and replied_to.author == client.user:
-                return
-        except:
-            pass
+    # 2. Identify the bot's mention strings
+    # <@ID> is standard, <@!ID> is for nicknames
+    bot_id_str = f"<@{client.user.id}>"
+    bot_nick_str = f"<@!{client.user.id}>"
 
-    # Check role mention
-    role_mentioned = any(role.id == REF_ROLE_ID for role in message.role_mentions)
-
-    # Check bot mention
-    bot_mentioned = client.user in message.mentions
-
-    if not role_mentioned and not bot_mentioned:
+    # 3. TRIGGER CHECK: Must contain the @ mention in the actual text
+    if bot_id_str not in message.content and bot_nick_str not in message.content:
         return
 
-    # Cooldown check
+    # 4. Cooldown check (Unique to User + Server)
     now = time.time()
-    last_used = USER_COOLDOWNS.get(message.author.id, 0)
-
-    if now - last_used < COOLDOWN_SECONDS:
+    guild_id = message.guild.id if message.guild else "dm"
+    user_key = (message.author.id, guild_id)
+    
+    if now - USER_COOLDOWNS.get(user_key, 0) < COOLDOWN_SECONDS:
         return
 
-    USER_COOLDOWNS[message.author.id] = now
+    USER_COOLDOWNS[user_key] = now
 
-    # Hot reload responses
+    # 5. Reload and Respond
     load_responses()
-
-    # Respond (80/20 image vs text)
+    
     if REF_IMAGES and random.random() < IMAGE_CHANCE:
         await message.channel.send(random.choice(REF_IMAGES))
     elif REF_LINES:
         await message.channel.send(random.choice(REF_LINES))
 
 # ================= START =================
-client.run(TOKEN)
+if TOKEN:
+    client.run(TOKEN)
+else:
+    print("❌ No TOKEN found in environment variables.")
