@@ -17,10 +17,10 @@ load_dotenv()
 
 # ================= CONFIG =================
 TOKEN = os.getenv("REF_TOKEN")
-TOPGG_TOKEN = os.getenv("TOPGG_TOKEN")  # your top.gg API key
+TOPGG_TOKEN = os.getenv("TOPGG_TOKEN") 
 RESPONSES_FILE = "ref_responses.json"
 COOLDOWN_SECONDS = 10
-LOG_CHANNEL_ID = int(os.getenv("REF_LOG_CHANNEL_ID", "0"))  # private channel in your own server
+LOG_CHANNEL_ID = int(os.getenv("REF_LOG_CHANNEL_ID", "0"))
 PORT = int(os.getenv("PORT", "8080"))
 
 # ================= FLASK KEEP-ALIVE =================
