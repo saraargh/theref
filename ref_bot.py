@@ -22,6 +22,7 @@ RESPONSES_FILE = "ref_responses.json"
 COOLDOWN_SECONDS = 10
 LOG_CHANNEL_ID = int(os.getenv("REF_LOG_CHANNEL_ID", "0"))
 PORT = int(os.getenv("PORT", "8080"))
+DEV_GUILD = int(os.getenv("REF_DEV_GUILD_ID", "0"))
 
 # ================= FLASK KEEP-ALIVE =================
 app = Flask("ref")
@@ -153,6 +154,7 @@ def build_guild_embed(guild: discord.Guild, action: str) -> discord.Embed:
 
     return embed
 
+
 # ================= EVENTS =================
 @client.event
 async def on_ready():
@@ -160,6 +162,8 @@ async def on_ready():
 
     try:
         await tree.sync()
+        if DEV_GUILD:
+            await tree.sync(guild=discord.Object(id=DEV_GUILD))
         print("✅ Slash commands synced")
     except Exception as e:
         print(f"❌ Failed to sync slash commands: {e}")
@@ -170,7 +174,7 @@ async def on_ready():
 
     await post_topgg_stats_async()
     print(f"🟨 REF connected as {client.user} | Guilds: {guild_count()}")
-
+    
 @client.event
 async def on_guild_join(guild: discord.Guild):
     print(f"✅ Joined guild: {guild.name} ({guild.id})")
@@ -222,6 +226,46 @@ async def vote_command(interaction: discord.Interaction):
         colour=discord.Color.blurple()
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@tree.command(
+    name="serverlist",
+    description="List all servers this bot is currently in"
+)
+@app_commands.guilds(DEV_GUILD) 
+@app_commands.checks.has_permissions(administrator=True)
+async def serverlist_command(interaction: discord.Interaction):
+    guilds = sorted(client.guilds, key=lambda g: (g.member_count or 0), reverse=True)
+
+    if not guilds:
+        await interaction.response.send_message("REF isn't in any servers.", ephemeral=True)
+        return
+
+    lines = []
+    for i, guild in enumerate(guilds, start=1):
+        lines.append(
+            f"**{i}. {guild.name}**\n"
+            f"ID: `{guild.id}`\n"
+            f"Members: `{guild.member_count or 0}`"
+        )
+
+    chunks = []
+    current = ""
+    for line in lines:
+        if len(current) + len(line) + 2 > 1900:
+            chunks.append(current)
+            current = line
+        else:
+            current = f"{current}\n\n{line}" if current else line
+    if current:
+        chunks.append(current)
+
+    await interaction.response.send_message(
+        f"REF is in **{len(guilds)}** server(s):\n\n{chunks[0]}",
+        ephemeral=True
+    )
+
+    for chunk in chunks[1:]:
+        await interaction.followup.send(chunk, ephemeral=True)
 
 # ================= START =================
 if TOKEN:
