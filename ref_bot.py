@@ -139,16 +139,19 @@ def build_guild_embed(guild: discord.Guild, action: str) -> discord.Embed:
         owner_text = f"{guild.owner} ({guild.owner.id})"
 
     embed = discord.Embed(
-        title=title,
+        title="📥 Bot added to server" if action == "added" else "📤 Bot removed from server",
         colour=colour,
         timestamp=datetime.now(timezone.utc)
     )
-    embed.add_field(name="Server Name", value=guild.name, inline=False)
-    embed.add_field(name="Server ID", value=str(guild.id), inline=True)
-    embed.add_field(name="Members", value=str(guild.member_count or 0), inline=True)
-    embed.add_field(name="Owner", value=owner_text, inline=False)
-    embed.add_field(name="Total Servers", value=str(guild_count()), inline=False)
-
+    
+    embed.description = (
+        f"**Name:** {guild.name}\n"
+        f"**Guild ID:** {guild.id}\n"
+        f"**Owner ID:** {guild.owner_id}\n"
+        f"**Member count:** {guild.member_count or 0}\n"
+        f"**Created:** {guild.created_at.strftime('%A, %d %B %Y at %H:%M')}"
+    )
+    
     if guild.icon:
         embed.set_thumbnail(url=guild.icon.url)
 
