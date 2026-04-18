@@ -17,8 +17,11 @@ load_dotenv()
 
 # ================= CONFIG =================
 TOKEN = os.getenv("REF_TOKEN")
-TOPGG_TOKEN = os.getenv("TOPGG_TOKEN") 
+TOPGG_TOKEN = os.getenv("TOPGG_TOKEN")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_REPO = os.getenv("GITHUB_REPO")  # e.g. "saraargh/ref-bot"
 RESPONSES_FILE = "ref_responses.json"
+IMAGES_FOLDER = "images"
 COOLDOWN_SECONDS = 10
 LOG_CHANNEL_ID = int(os.getenv("REF_LOG_CHANNEL_ID", "0"))
 PORT = int(os.getenv("PORT", "8080"))
@@ -52,7 +55,7 @@ REF_IMAGES = []
 IMAGE_CHANCE = 0.2
 
 def load_responses():
-    global _last_mtime, REF_LINES, REF_IMAGES, IMAGE_CHANCE
+    global _last_mtime, REF_LINES, IMAGE_CHANCE
     try:
         if not os.path.exists(RESPONSES_FILE):
             return
@@ -61,12 +64,37 @@ def load_responses():
             with open(RESPONSES_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
             REF_LINES = data.get("lines", [])
-            REF_IMAGES = data.get("images", [])
             IMAGE_CHANCE = data.get("image_chance", 0.2)
             _last_mtime = mtime
             print("🟨 REF responses reloaded")
     except Exception as e:
         print(f"❌ Failed to load responses: {e}")
+
+def load_images_from_github():
+    global REF_IMAGES
+    if not GITHUB_TOKEN or not GITHUB_REPO:
+        print("⚠️ GITHUB_TOKEN or GITHUB_REPO not set, skipping image load.")
+        return
+
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{IMAGES_FOLDER}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            files = r.json()
+            REF_IMAGES = [
+                f["download_url"] for f in files
+                if f["type"] == "file"
+                and f["name"].lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".webp"))
+            ]
+            print(f"🟨 Loaded {len(REF_IMAGES)} images from GitHub")
+        elif r.status_code == 404:
+            print(f"⚠️ images/ folder not found in {GITHUB_REPO} — no images loaded.")
+        else:
+            print(f"❌ GitHub images fetch failed: {r.status_code} | {r.text}")
+    except Exception as e:
+        print(f"❌ Error fetching images from GitHub: {e}")
 
 # ================= COOLDOWN =================
 USER_COOLDOWNS = {}
@@ -132,18 +160,17 @@ async def send_private_log(embed: discord.Embed):
 
 def build_guild_embed(guild: discord.Guild, action: str) -> discord.Embed:
     colour = discord.Color.green() if action == "added" else discord.Color.red()
-    title = "✅ REF Added to Server" if action == "added" else "❌ REF Removed from Server"
-
-    owner_text = "Unknown"
-    if guild.owner:
-        owner_text = f"{guild.owner} ({guild.owner.id})"
 
     embed = discord.Embed(
         title="📥 Bot added to server" if action == "added" else "📤 Bot removed from server",
         colour=colour,
         timestamp=datetime.now(timezone.utc)
     )
-    
+
+    owner_text = "Unknown"
+    if guild.owner:
+        owner_text = f"{guild.owner} ({guild.owner.id})"
+
     embed.description = (
         f"**Name:** {guild.name}\n"
         f"**Guild ID:** {guild.id}\n"
@@ -151,17 +178,17 @@ def build_guild_embed(guild: discord.Guild, action: str) -> discord.Embed:
         f"**Member count:** {guild.member_count or 0}\n"
         f"**Created:** {guild.created_at.strftime('%A, %d %B %Y at %H:%M')}"
     )
-    
+
     if guild.icon:
         embed.set_thumbnail(url=guild.icon.url)
 
     return embed
 
-
 # ================= EVENTS =================
 @client.event
 async def on_ready():
     load_responses()
+    load_images_from_github()
 
     try:
         await tree.sync()
@@ -177,7 +204,7 @@ async def on_ready():
 
     await post_topgg_stats_async()
     print(f"🟨 REF connected as {client.user} | Guilds: {guild_count()}")
-    
+
 @client.event
 async def on_guild_join(guild: discord.Guild):
     print(f"✅ Joined guild: {guild.name} ({guild.id})")
@@ -234,7 +261,7 @@ async def vote_command(interaction: discord.Interaction):
     name="serverlist",
     description="List all servers this bot is currently in"
 )
-@app_commands.guilds(DEV_GUILD) 
+@app_commands.guilds(DEV_GUILD)
 @app_commands.checks.has_permissions(administrator=True)
 async def serverlist_command(interaction: discord.Interaction):
     guilds = sorted(client.guilds, key=lambda g: (g.member_count or 0), reverse=True)
@@ -269,6 +296,14 @@ async def serverlist_command(interaction: discord.Interaction):
 
     for chunk in chunks[1:]:
         await interaction.followup.send(chunk, ephemeral=True)
+
+@tree.command(name="reloadimages", description="Reload images from GitHub (dev only).")
+@app_commands.guilds(DEV_GUILD)
+@app_commands.checks.has_permissions(administrator=True)
+async def reloadimages_command(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    await asyncio.to_thread(load_images_from_github)
+    await interaction.followup.send(f"✅ Reloaded — {len(REF_IMAGES)} image(s) loaded.", ephemeral=True)
 
 # ================= START =================
 if TOKEN:
