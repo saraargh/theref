@@ -244,6 +244,56 @@ async def on_message(message: discord.Message):
     elif REF_LINES:
         await message.channel.send(random.choice(REF_LINES))
 
+
+# =========
+# SERVERLISTEMBED
+# ======
+
+class ServerPaginator(discord.ui.View):
+    def __init__(self, guilds):
+        super().__init__(timeout=60)
+        self.guilds = guilds
+        self.page = 0
+        self.per_page = 10
+        self.max_pages = max(1, (len(guilds) - 1) // self.per_page + 1)
+
+    def make_embed(self):
+        start = self.page * self.per_page
+        subset = self.guilds[start:start + self.per_page]
+        
+        embed = discord.Embed(
+            title=f"REF Server List ({len(self.guilds)})", 
+            color=discord.Color.blurple(),
+            timestamp=datetime.now(timezone.utc)
+        )
+        
+        for i, guild in enumerate(subset, start=start + 1):
+            owner = guild.owner if guild.owner else "Unknown"
+            embed.add_field(
+                name=f"{i}. {guild.name}",
+                value=f"ID: `{guild.id}`\nMembers: `{guild.member_count}`\nOwner: `{owner}`",
+                inline=False
+            )
+            
+        embed.set_footer(text=f"Page {self.page + 1} of {self.max_pages}")
+        return embed
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.gray)
+    async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.page > 0:
+            self.page -= 1
+            await interaction.response.edit_message(embed=self.make_embed(), view=self)
+        else:
+            await interaction.response.defer()
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.gray)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.page < self.max_pages - 1:
+            self.page += 1
+            await interaction.response.edit_message(embed=self.make_embed(), view=self)
+        else:
+            await interaction.response.defer()
+
 # ================= SLASH COMMANDS =================
 @tree.command(name="vote", description="Get the vote link for REF.")
 async def vote_command(interaction: discord.Interaction):
@@ -257,45 +307,18 @@ async def vote_command(interaction: discord.Interaction):
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@tree.command(
-    name="serverlist",
-    description="List all servers this bot is currently in"
-)
+@tree.command(name="serverlist", description="List all servers REF is in.")
 @app_commands.guilds(DEV_GUILD)
 @app_commands.checks.has_permissions(administrator=True)
 async def serverlist_command(interaction: discord.Interaction):
+    # Sorts by member count descending as per your original logic
     guilds = sorted(client.guilds, key=lambda g: (g.member_count or 0), reverse=True)
-
+    
     if not guilds:
-        await interaction.response.send_message("REF isn't in any servers.", ephemeral=True)
-        return
-
-    lines = []
-    for i, guild in enumerate(guilds, start=1):
-        lines.append(
-            f"**{i}. {guild.name}**\n"
-            f"ID: `{guild.id}`\n"
-            f"Members: `{guild.member_count or 0}`"
-        )
-
-    chunks = []
-    current = ""
-    for line in lines:
-        if len(current) + len(line) + 2 > 1900:
-            chunks.append(current)
-            current = line
-        else:
-            current = f"{current}\n\n{line}" if current else line
-    if current:
-        chunks.append(current)
-
-    await interaction.response.send_message(
-        f"REF is in **{len(guilds)}** server(s):\n\n{chunks[0]}",
-        ephemeral=True
-    )
-
-    for chunk in chunks[1:]:
-        await interaction.followup.send(chunk, ephemeral=True)
+        return await interaction.response.send_message("REF isn't in any servers.", ephemeral=True)
+    
+    view = ServerPaginator(guilds)
+    await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
 
 @tree.command(name="reloadimages", description="Reload images from GitHub (dev only).")
 @app_commands.guilds(DEV_GUILD)
